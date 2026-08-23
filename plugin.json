@@ -1,0 +1,12 @@
+{
+  "ID": "F3C8B942-61C5-517E-9637-899B094BG8D4",
+  "ActionKeyword": "bundle",
+  "Name": "Bumble Bundle",
+  "Description": "Scans the latest game bundle via IndieGameBundles",
+  "Author": "@Malkaryon",
+  "Version": "1.0.0",
+  "Language": "python",
+  "Website": "https://www.indiegamebundles.com",
+  "IcoPath": "icon.png",
+  "ExecuteFileName": "main.py"
+}
