@@ -58,44 +58,63 @@ def get_store_icon(store_text, store_url=""):
     if not clean_name:
         return "icon.png"
     
-    domain = ""
-    if store_url:
+    # Store mapping dictionary
+    domain_map = {
+        "humble": "humblebundle.com",
+        "humblebundle": "humblebundle.com",
+        "fanatical": "fanatical.com",
+        "indiegala": "indiegala.com",
+        "greenmangaming": "greenmangaming.com",
+        "gmg": "greenmangaming.com",
+        "gog": "gog.com",
+        "steam": "steampowered.com",
+        "epicgames": "epicgames.com",
+        "itchio": "itch.io",
+        "digiphile": "digiphile.co",
+        "groupees": "groupees.com",
+        "dailyindiegame": "dailyindiegame.com",
+        "gamersgate": "gamersgate.com"
+    }
+    
+    domain = domain_map.get(clean_name)
+
+    # Dynamic fallback if not found in map
+    if not domain and store_url:
         try:
-            parsed_url = urlparse(store_url)
-            netloc = parsed_url.netloc.lower()
+            parsed = urlparse(store_url)
+            netloc = parsed.netloc.lower()
             if netloc.startswith("www."):
                 netloc = netloc[4:]
-            domain = netloc
+            if netloc and "isthereanydeal" not in netloc:
+                domain = netloc
         except Exception:
             pass
 
     if not domain:
-        domain_map = {
-            "humble": "humblebundle.com",
-            "fanatical": "fanatical.com",
-            "indiegala": "indiegala.com",
-            "greenmangaming": "greenmangaming.com",
-            "gmg": "greenmangaming.com",
-            "gog": "gog.com",
-            "steam": "steampowered.com",
-            "epicgames": "epicgames.com",
-            "itchio": "itch.io"
-        }
-        domain = domain_map.get(clean_name, f"{clean_name}.com")
+        domain = f"{clean_name}.com"
 
-    icon_url = f"https://icons.duckduckgo.com/ip3/{domain}.ico"
-    local_icon_path = os.path.join(CACHE_DIR, f"{clean_name}_logo.ico")
+    local_icon_path = os.path.join(CACHE_DIR, f"{clean_name}_logo.png")
     
-    if not os.path.exists(local_icon_path) or os.path.getsize(local_icon_path) == 0:
+    # Remove corrupted or empty cache files
+    if os.path.exists(local_icon_path) and os.path.getsize(local_icon_path) <= 100:
         try:
-            req = urllib.request.Request(icon_url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=2) as response:
-                with open(local_icon_path, 'wb') as f:
-                    f.write(response.read())
+            os.remove(local_icon_path)
+        except Exception:
+            pass
+
+    if not os.path.exists(local_icon_path):
+        icon_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
+        try:
+            req = urllib.request.Request(icon_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+            with urllib.request.urlopen(req, timeout=4) as response:
+                content = response.read()
+                if len(content) > 100:
+                    with open(local_icon_path, 'wb') as f:
+                        f.write(content)
         except Exception:
             pass
             
-    if os.path.exists(local_icon_path) and os.path.getsize(local_icon_path) > 0:
+    if os.path.exists(local_icon_path) and os.path.getsize(local_icon_path) > 100:
         return local_icon_path
     return "icon.png"
 
@@ -105,17 +124,25 @@ def get_game_icon(app_id, img_url):
     filename = f"game_{app_id}.jpg" if app_id else "game_custom.jpg"
     local_path = os.path.join(CACHE_DIR, filename)
     
-    if not os.path.exists(local_path) or os.path.getsize(local_path) == 0:
+    if os.path.exists(local_path) and os.path.getsize(local_path) <= 100:
+        try:
+            os.remove(local_path)
+        except Exception:
+            pass
+
+    if not os.path.exists(local_path):
         if img_url:
             try:
                 req = urllib.request.Request(img_url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, timeout=2) as response:
-                    with open(local_path, 'wb') as f:
-                        f.write(response.read())
+                with urllib.request.urlopen(req, timeout=3) as response:
+                    content = response.read()
+                    if len(content) > 100:
+                        with open(local_path, 'wb') as f:
+                            f.write(content)
             except Exception:
                 pass
                 
-    if os.path.exists(local_path) and os.path.getsize(local_path) > 0:
+    if os.path.exists(local_path) and os.path.getsize(local_path) > 100:
         return local_path
     return "icon.png"
 
@@ -139,13 +166,13 @@ def clean_html(raw_html):
 def get_game_info(game_name):
     if game_name in _STEAM_CACHE:
         cached = _STEAM_CACHE[game_name]
-        if len(cached) == 3 and os.path.exists(cached[2]):
+        if len(cached) == 3 and os.path.exists(cached[2]) and os.path.getsize(cached[2]) > 100:
             return cached[0], cached[1], cached[2]
 
     try:
         query_url = f"https://store.steampowered.com/api/storesearch/?term={quote(game_name)}&l=english&cc=US"
         req = urllib.request.Request(query_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=1.5) as resp:
+        with urllib.request.urlopen(req, timeout=2) as resp:
             data = json.loads(resp.read().decode('utf-8'))
             items = data.get("items", [])
             if items:
@@ -169,13 +196,12 @@ def get_game_info(game_name):
                 else:
                     price_str = "Free / F2P"
                 
-                # Récupération des avis et notes Steam
                 review_str = ""
                 if app_id:
                     try:
                         rev_url = f"https://store.steampowered.com/appreviews/{app_id}?json=1&purchase_type=all"
                         rev_req = urllib.request.Request(rev_url, headers={'User-Agent': 'Mozilla/5.0'})
-                        with urllib.request.urlopen(rev_req, timeout=1.0) as rev_resp:
+                        with urllib.request.urlopen(rev_req, timeout=1.5) as rev_resp:
                             rev_data = json.loads(rev_resp.read().decode('utf-8'))
                             summary = rev_data.get("query_summary", {})
                             score_desc = summary.get("review_score_desc", "")
