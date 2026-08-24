@@ -14,8 +14,9 @@ A lightning-fast Flow Launcher plugin to discover active video game bundles from
 ## ✨ Features
 
 * **⚡ Instant RSS Search**: Query current game bundles directly from IsThereAnyDeal's feed with zero lag.
+* **🔍 Game Search (`bundle game [name]`)**: Search for any specific game across all active bundles to see instantly which bundle contains it, along with store and pricing details.
 * **🖼️ Local Caching**: Automatically downloads, optimizes, and caches official Steam game capsules and store logos (`Humble Bundle`, `Fanatical`, etc.) locally for instant subsequent loads.
-* **⭐ Live Steam Reviews & Ratings**: Right-clicking a bundle fetches real-time Steam data, showing you review score descriptors (e.g., *Overwhelmingly Positive*) alongside total review counts.
+* **⭐ Live Steam Reviews & Ratings**: Right-clicking a bundle or game search result fetches real-time Steam data, showing you review score descriptors (e.g., *Overwhelmingly Positive*) alongside total review counts.
 * **💰 Pricing & Store Integration**: Clear breakdown of bundle pricing structures and direct links to the stores.
 * **🔄 Smart Fallbacks**: Automatically falls back to an IsThereAnyDeal search if a bundled title isn't available on Steam.
 
@@ -23,9 +24,10 @@ A lightning-fast Flow Launcher plugin to discover active video game bundles from
 
 ## 🚀 How It Works
 
-* **`bundle` (Query)**: Type your keyword to search through active game bundles.
-* **Left Click**: Opens the selected bundle page directly in your default web browser.
-* **Right Click (Context Menu)**: Instantly reveals every game composing that bundle, complete with individual Steam pricing, review scores, and direct store links.
+* **`bundle [optional search query]`**: Type your keyword to search through active game bundles.
+* **`bundle game [game name]`**: Search for a specific game across all active bundles (e.g., `bundle game Hades`). 
+* **Left Click**: Opens the selected bundle or game store page directly in your default web browser.
+* **Right Click (Context Menu)**: Instantly reveals every game composing that bundle in parallel, complete with individual Steam pricing, review scores, and direct store links (works on both bundle results and game search results!).
 
 ---
 
