@@ -4,7 +4,6 @@
 
 [![Python](https://img.shields.io/badge/Python-3.x-blue.svg)](https://www.python.org/)
 [![Flow Launcher](https://img.shields.io/badge/Flow%20Launcher-Plugin-purple.svg)](https://www.flowlauncher.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A lightning-fast Flow Launcher plugin to discover active video game bundles from **IsThereAnyDeal**, inspect their exact game compositions, check live Steam prices, and read community review ratings instantly.
 
