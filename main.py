@@ -8,6 +8,7 @@ import webbrowser
 import html
 from urllib.parse import urlparse, quote
 import time
+import concurrent.futures
 
 PLUGIN_DIR = os.path.dirname(__file__)
 CACHE_DIR = os.path.join(PLUGIN_DIR, "Cache")
@@ -58,7 +59,6 @@ def get_store_icon(store_text, store_url=""):
     if not clean_name:
         return "icon.png"
     
-    # Store mapping dictionary
     domain_map = {
         "humble": "humblebundle.com",
         "humblebundle": "humblebundle.com",
@@ -78,7 +78,6 @@ def get_store_icon(store_text, store_url=""):
     
     domain = domain_map.get(clean_name)
 
-    # Dynamic fallback if not found in map
     if not domain and store_url:
         try:
             parsed = urlparse(store_url)
@@ -95,7 +94,6 @@ def get_store_icon(store_text, store_url=""):
 
     local_icon_path = os.path.join(CACHE_DIR, f"{clean_name}_logo.png")
     
-    # Remove corrupted or empty cache files
     if os.path.exists(local_icon_path) and os.path.getsize(local_icon_path) <= 100:
         try:
             os.remove(local_icon_path)
@@ -308,6 +306,49 @@ def query(param=""):
     if not bundles:
         return {"result": [{"Title": "No bundles found", "SubTitle": "", "IcoPath": "icon.png"}]}
         
+    param_lower = param.lower().strip()
+    
+    if param_lower.startswith("game "):
+        game_query = param[5:].strip().lower()
+        if not game_query:
+            return {"result": [{"Title": "Type a game name to search in active bundles", "SubTitle": "Example: bundle game Hades", "IcoPath": "icon.png"}]}
+        
+        matching_results = []
+        for b in bundles:
+            desc = b.get("Description", "")
+            lines = [l.strip() for l in desc.split('\n') if l.strip()]
+            game_lines = []
+            for line in lines:
+                l_lower = line.lower()
+                if "expires on" in l_lower or "go to bundle" in l_lower or "tier" in l_lower:
+                    continue
+                if any(p in line for p in b['Prices'].split(" / ")) and len(line) < 15:
+                    continue
+                if len(line) > 3:
+                    game_lines.append(line)
+            
+            for g_line in game_lines:
+                if game_query in g_line.lower():
+                    matching_results.append({
+                        "Title": g_line,
+                        "SubTitle": f"Found in: {b['Title']} ({b['Store']} — {b['Prices']})",
+                        "IcoPath": b["IcoPath"],
+                        "ContextData": b["Title"],
+                        "JsonRPCAction": {
+                            "method": "open_url",
+                            "parameters": [b["Link"]],
+                            "hide_window_after_execution": True
+                        }
+                    })
+        
+        if not matching_results:
+            return {"result": [{"Title": f"No active bundles found containing '{game_query}'", "SubTitle": "", "IcoPath": "icon.png"}]}
+        
+        return {"result": matching_results}
+        
+    elif param_lower == "game":
+        return {"result": [{"Title": "Type a game name to search in active bundles", "SubTitle": "Example: bundle game Hades", "IcoPath": "icon.png"}]}
+        
     if param:
         filtered = [b for b in bundles if param.lower() in b["Title"].lower()]
         if not filtered:
@@ -375,18 +416,35 @@ if __name__ == "__main__":
                             
                     if game_lines:
                         games_to_fetch = game_lines[:15]
+                        
+                        # Chargement en parallèle des informations et des images des jeux via un ThreadPool
+                        def fetch_item(g_line):
+                            return g_line, get_game_info(g_line)
+
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                            future_to_game = {executor.submit(fetch_item, g): g for g in games_to_fetch}
+                            fetched_results = {}
+                            for future in concurrent.futures.as_completed(future_to_game):
+                                try:
+                                    g_l, (g_url, g_sub, g_icon) = future.result()
+                                    fetched_results[g_l] = (g_url, g_sub, g_icon)
+                                except Exception:
+                                    pass
+
+                        # On reconstruit la liste dans l'ordre initial
                         for g_line in games_to_fetch:
-                            game_url, game_sub, game_icon = get_game_info(g_line)
-                            menu_results.append({
-                                "Title": g_line,
-                                "SubTitle": game_sub,
-                                "IcoPath": game_icon,
-                                "JsonRPCAction": {
-                                    "method": "open_url",
-                                    "parameters": [game_url],
-                                    "hide_window_after_execution": True
-                                }
-                            })
+                            if g_line in fetched_results:
+                                game_url, game_sub, game_icon = fetched_results[g_line]
+                                menu_results.append({
+                                    "Title": g_line,
+                                    "SubTitle": game_sub,
+                                    "IcoPath": game_icon,
+                                    "JsonRPCAction": {
+                                        "method": "open_url",
+                                        "parameters": [game_url],
+                                        "hide_window_after_execution": True
+                                    }
+                                })
                     else:
                         menu_results.append({
                             "Title": "No additional games list found",
